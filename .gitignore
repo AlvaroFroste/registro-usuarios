@@ -1,0 +1,10 @@
+
+# No subir contraseñas
+.env
+
+# No subir backups
+backups/*.sql
+backups/*.gz
+
+# Archivos temporales
+*.log

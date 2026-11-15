@@ -1,0 +1,67 @@
+
+# Nombre del proyecto
+name: registro-usuarios
+
+services:
+
+  # Contenedor de la BBDD
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped #Reinicia los contenedores automaticamente
+
+    # Credenciales de .env
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+
+    # Guardar los datos
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    # Red para comunicarse con PHP
+    networks:
+      - registro_network
+
+    # Comprobacion de MariaDB 
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Contenedor de nuestra aplicación web
+  web:
+    build: .
+    restart: unless-stopped
+
+    # Redireccion al puerto 8080
+    ports:
+      - "8080:80"
+
+    # Datos para conectar con MariaDB
+    environment:
+      DB_HOST: db
+      DB_NAME: ${MARIADB_DATABASE}
+      DB_USER: ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+
+    # Esperamos a que MariaDB esté preparada
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Misma red que MariaDB
+    networks:
+      - registro_network
+
+# Red interna de los contenedores
+networks:
+  registro_network:
+    driver: bridge
+
+# Volumen para conservar la base de datos
+volumes:
+  db_data:
